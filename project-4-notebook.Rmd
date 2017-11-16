@@ -1,0 +1,83 @@
+---
+title: "GP4"
+author: "Sally Abekhe, Joshua Cosme, Luis Pedraza"
+date: "11/15/2017"
+output:
+  html_notebook:
+    code_folding: hide
+    toc: yes
+    toc_depth: 4
+    toc_float: yes
+runtime: shiny
+resource_files:
+- .renviron
+- .Renviron
+---
+```{r setup, include=FALSE}
+library(tidyverse)
+require(data.world)
+knitr::opts_chunk$set(echo = TRUE)
+```
+  
+## **R Session Info**  
+
+```{r}
+sessionInfo()
+```
+
+## ** Github Link**
+
+
+
+
+## ** Connecting to data.world**
+```{r}
+project <- "https://data.world/tonypedraza/f-17-edv-project-3"
+data.world::set_config(cfg_env("DW_API"))
+```
+
+## **Introduction** 
+This R notebook displays how to clean, export, input, reformat, and transform data in R.
+
+## **Cleaning the Data**
+Below, we read and clean a dataset by passing an argument to read_csv.
+
+```{r}
+require(tidyverse)
+require(dplyr)
+powerBall <- read_csv("preCensusMergeData.csv", 
+col_types = cols(
+  fy11 = col_number(),
+  fy12 = col_number(),
+  fy13 = col_number(),
+  fy14 = col_number(),
+  county = col_character(),
+  merge_loc = col_character()
+))
+
+head(powerBall)
+
+# Add the sales per year for the each county, aggregate the counties, and remove the original sales columns
+powerBall <- powerBall %>% group_by(merge_loc) %>% 
+  mutate(salesfy11 = sum(fy11, na.rm = TRUE)) %>%
+  mutate(salesfy12 = sum(fy12, na.rm = TRUE)) %>%
+  mutate(salesfy13 = sum(fy13, na.rm = TRUE)) %>%
+  mutate(salesfy14 = sum(fy14, na.rm=TRUE)) %>%
+  distinct(county, merge_loc, salesfy11, salesfy12, salesfy13, salesfy14)
+
+
+head(powerBall)
+
+powerBall
+```
+
+
+Then we write the cleaned dataset to a new csv file.
+
+```{r}
+write_csv(powerBall, "powerball.csv")
+```
+
+
+
+
