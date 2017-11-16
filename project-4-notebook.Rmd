@@ -4,7 +4,7 @@ author: "Sally Abekhe, Joshua Cosme, Luis Pedraza"
 date: "11/15/2017"
 output:
   html_notebook:
-    code_folding: hide
+    code_folding: show
     toc: yes
     toc_depth: 4
     toc_float: yes
@@ -25,14 +25,13 @@ knitr::opts_chunk$set(echo = TRUE)
 sessionInfo()
 ```
 
-## ** Github Link**
+## **Github Link**
+https://github.com/tonypedraza/data-viz-project-4
 
-
-
-
-## ** Connecting to data.world**
+## **Connecting to data.world**
+Below, we connect our data.world project to this notebook.
 ```{r}
-project <- "https://data.world/tonypedraza/f-17-edv-project-3"
+dataset_key <- "https://data.world/tonypedraza/f-17-edv-project-4"
 data.world::set_config(cfg_env("DW_API"))
 ```
 
@@ -55,8 +54,6 @@ col_types = cols(
   merge_loc = col_character()
 ))
 
-head(powerBall)
-
 # Add the sales per year for the each county, aggregate the counties, and remove the original sales columns
 powerBall <- powerBall %>% group_by(merge_loc) %>% 
   mutate(salesfy11 = sum(fy11, na.rm = TRUE)) %>%
@@ -64,11 +61,6 @@ powerBall <- powerBall %>% group_by(merge_loc) %>%
   mutate(salesfy13 = sum(fy13, na.rm = TRUE)) %>%
   mutate(salesfy14 = sum(fy14, na.rm=TRUE)) %>%
   distinct(county, merge_loc, salesfy11, salesfy12, salesfy13, salesfy14)
-
-
-head(powerBall)
-
-powerBall
 ```
 
 
@@ -77,6 +69,34 @@ Then we write the cleaned dataset to a new csv file.
 ```{r}
 write_csv(powerBall, "powerball.csv")
 ```
+
+
+We then upload this file to data.world so we can join it with the census data.
+
+## **Analysis**
+
+First, we have to import the newly joined dataset from data.world into this notebook:
+
+```{r}
+
+# The SQL query to join the datasets in data.world
+sqlQuery <- data.world::qry_sql("with q1 as(SELECT powerball.county, powerball.salesfy11, powerball.salesfy12, 
+  powerball.salesfy13, powerball.salesfy14, powerball.merge_loc, il.b17001_002 population_living_in_poverty
+  FROM powerball left join il on powerball.merge_loc = il.areaname)
+
+  SELECT q1.county, q1.salesfy11, q1.salesfy12, q1.salesfy13, q1.salesfy14, 
+  q1.population_living_in_poverty, ilpop.b11002_001 total_population
+  FROM q1 left join ilpop on q1.merge_loc = ilpop.areaname"
+)
+
+# Import the data set returned by the query into a local data frame
+powerBallCensusMerged <- data.world::query(sqlQuery, dataset=dataset_key)
+
+```
+
+
+
+
 
 
 
