@@ -28,7 +28,7 @@ sessionInfo()
 ## **Github Link**
 https://github.com/tonypedraza/data-viz-project-4
 
-## *Data.world Link**
+## **Data.world Link**
 https://data.world/tonypedraza/f-17-edv-project-4
 
 ## **Connecting to data.world**
