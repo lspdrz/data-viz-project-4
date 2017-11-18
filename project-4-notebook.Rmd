@@ -1,5 +1,5 @@
 ---
-title: "GP4"
+title: "The Effect of Powerball Sales on Poverty in The State of Illinois"
 author: "Sally Abekhe, Joshua Cosme, Luis Pedraza"
 date: "11/15/2017"
 output:
@@ -36,10 +36,13 @@ data.world::set_config(cfg_env("DW_API"))
 ```
 
 ## **Introduction** 
+In this document we compare powerball sales in each county in the state of Illinois to census data and monitor it's relationship to Poverty, if any. 
 This R notebook displays how to clean, export, input, reformat, and transform data in R.
 
 ## **Cleaning the Data**
 Below, we read and clean a dataset by passing an argument to read_csv.
+
+*Dataset before cleaning:*
 
 ```{r}
 require(tidyverse)
@@ -55,13 +58,20 @@ col_types = cols(
   merge_loc = col_character()
 ))
 
+library(DT)
+datatable(powerBall)
+```
+*Below is the Cleaned dataset: The sales for each county have been summed up and each county now appears only once*
+```{r}
 # Add the sales per year for the each county, aggregate the counties, and remove the original sales columns
+
 powerBall <- powerBall %>% group_by(merge_loc) %>% 
   mutate(salesfy11 = sum(fy11, na.rm = TRUE)) %>%
   mutate(salesfy12 = sum(fy12, na.rm = TRUE)) %>%
   mutate(salesfy13 = sum(fy13, na.rm = TRUE)) %>%
   mutate(salesfy14 = sum(fy14, na.rm=TRUE)) %>%
   distinct(county, merge_loc, salesfy11, salesfy12, salesfy13, salesfy14)
+datatable(powerBall)
 ```
 
 
@@ -94,7 +104,10 @@ sqlQuery <- data.world::qry_sql("with q1 as(SELECT powerball.county, powerball.s
 # Import the data set returned by the query into a local data frame
 powerBallCensusMerged <- data.world::query(sqlQuery, dataset=dataset_key)
 powerBallCensusMerged <- powerBallCensusMerged %>% dplyr::mutate(poverty_ratio = population_living_in_poverty/total_population)
-
+```
+*Below is the new data set returned by the query*
+```{r}
+datatable(powerBallCensusMerged)
 ```
 
 ```{r}
@@ -102,8 +115,9 @@ powerBallCensusMerged <- powerBallCensusMerged %>% dplyr::mutate(poverty_ratio =
   head(powerBallCensusMerged) %>% tidyr::gather(salesfy11:salesfy14, key="year", value="powerball_sales", na.rm=TRUE) %>%
   ggplot(aes(x=year, y=powerball_sales, colour=county, group=county)) + geom_point() + geom_line())
 ```
+**What happened in FY14?**
 
-Here we use the cumulative distribution function to select the counties with a poverty ratio in the top 10% and view their powerball sales from 2011-2014
+Below, we use the cumulative distribution function to select the counties with a poverty ratio in the top 10% and view their powerball sales from 2011-2014. From the visualization, one might conclude that there is no correlation between powerball sales and poverty in these counties. However if we approach *Alexander county* in fy13 as an outlier, the conclusion becomes different. The other ten counties, also with high poverty ratios evidently have relatively low sales of powerball sales -particularly *Hardin, Schuyler, Champaign and Pulaski counties*. An argument can therefore be made that in counties where powerball tickets are not sold as much, there is less of a chance of people in poverty being lifted out by winning the lottery. Therefore, there could be a slight negative correlation between powerball sales and the poverty ratio. It is also tremendously significant that while sales where soaring from fy11 through 13, they seemed to drop drastically in fy 14?
 ```{r}
   cume_dist_df <- powerBallCensusMerged %>% dplyr::mutate(percentile = cume_dist(poverty_ratio)) %>% 
   dplyr::filter(percentile > 0.9) %>% dplyr::arrange(desc(percentile))
@@ -111,17 +125,19 @@ Here we use the cumulative distribution function to select the counties with a p
   cume_dist_df %>% tidyr::gather(salesfy11:salesfy14, key="year", value="powerball_sales", na.rm=TRUE) %>%
   ggplot(aes(x=year, y=powerball_sales, colour=county, group=county)) + geom_point() + geom_line())
 ```
+**With a 1 in 392million chance of winning the Powerball jackpot, do lottery tickets prey on the poor?**
 
-Here we use the summarise function and ntile function to split our data into three buckets (3 being the counties with the highest povery ratio and 1 being the ones with the lowest ratio.) Then we use a mutate group_by to groub by this ntile column we have created. Then we aggregate and display each bucket's powerball sales from 2011-2014
+Here we use the summarise function and ntile function to split our data into three buckets (3 being the counties with the highest povery ratio and 1 being the ones with the lowest ratio.) Then we use a mutate group_by to groub by this ntile column we have created. Then we aggregate and display each bucket's powerball sales from 2011-2014. The visualization below disproves the theory that there is a negative correlation between powerball sales and poverty ratio. From this visualization, there comes the idea of the regressive nature of lottery tickets. The poor buy lottery tickets out of the hope of emerging out of their poverty, they don't wain but believe in a 'next time' and continue buying, feeding the viscious cycle.
 ```{r}
   ntile_df <- powerBallCensusMerged %>% dplyr::mutate(ntile_poverty_ratio = ntile(poverty_ratio, 3))
   ntile_tbl_df <- ntile_df %>% tidyr::gather(salesfy11:salesfy14, key="year", value="powerball_sales", na.rm=TRUE) %>%
   dplyr::group_by(year, ntile_poverty_ratio) %>% dplyr::summarise(sum_sales = sum(powerball_sales))
   renderPlot(
-    ggplot(ntile_tbl_df, aes(x=year, y=sum_sales, colour=ntile_poverty_ratio, group=ntile_poverty_ratio)) + geom_point() + geom_line())
+    ggplot(ntile_tbl_df, aes(x=year, y=sum_sales, colour=ntile_poverty_ratio, group=ntile_poverty_ratio)) + geom_point() + geom_line()) 
+  
 ```
 
-Here we use the percent_rank function to only view the poorest 15% counties. Then we use the lag function to determine the slope for each year's powerball sales.
+Here we use the percent_rank function to only view the poorest 15% counties. Then we use the lag function to determine the slope for each year's powerball sales. As can be seen from the table there was a statewide decline in powerball sales in fy14 and we can assume that if we went on to compare on a federal level, it would be the same case.
 ```{r}
   lag_df <- powerBallCensusMerged %>% dplyr::mutate(rank = percent_rank(poverty_ratio)) %>% dplyr::filter(rank >0.85) %>%
   tidyr::gather(salesfy11:salesfy14, key="year", value="powerball_sales", na.rm=TRUE) %>%
@@ -130,5 +146,11 @@ Here we use the percent_rank function to only view the poorest 15% counties. The
 
   lag_tbl_df <- lag_df %>% dplyr::mutate(slope=powerball_sales-lag(powerball_sales)) %>%
   dplyr::select(county, year, powerball_sales, poverty_ratio, slope)
-  renderTable(View(lag_tbl_df))
+  datatable(lag_tbl_df)
 ```
+##**Conclusion / Thoughts on what *really* happened in FY14**##
+Multiple studies suggest that the decline in FY14 was possibly due to players getting bored of the same-old games and wanting more creative, fun lottery games. By extension, one possible cause would be the continuing growth trend of the gambling industry. Players found a different, more creative, maybe even more fun way to play for sudden wealth in the form of the casinos that popped up everywhere. 
+
+From our visualizations though, there is this idea that the presence of lotteries (and perhaps gambling houses), act to feed in to poverty. 
+
+To take this analysis further, we could look at powerball sales against casino visits alongside poverty to see how these three entities affect one another.
